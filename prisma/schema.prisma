@@ -1,0 +1,1024 @@
+// Property 360 CRM — Prisma Schema
+// PostgreSQL (Supabase) | NestJS | Prisma ORM
+
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum GlobalRole {
+  SUPER_ADMIN
+  ADMIN
+  USER
+}
+
+enum EmployeeStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum Designation {
+  SALES_EXECUTIVE
+  TEAM_LEAD
+  SALES_MANAGER
+  AREA_MANAGER
+  DGM
+  GM
+  VP_SALES
+  SALES_COORDINATOR
+  ADMIN
+}
+
+enum LeadStatus {
+  FRESH
+  FOLLOW_UP
+  NOT_INTERESTED
+  DEAL_DONE
+  RINGING
+  CALL_BACK
+  VISIT_DONE
+  MEETING_DONE
+  WRONG_NUMBER
+  SWITCH_OFF
+  HOT_PROSPECT
+  SUSPECT
+}
+
+enum LeadType {
+  ALL
+  RENT
+  RESIDENTIAL
+  COMMERCIAL
+}
+
+enum LeadSource {
+  WEBSITE
+  REFERRAL
+  WALK_IN
+  SOCIAL_MEDIA
+  COLD_CALL
+  NEWSPAPER
+  HOARDING
+  BULK_IMPORT
+  OTHER
+}
+
+enum AttendanceStatus {
+  PRESENT_FULL
+  PRESENT_HALF
+  ABSENT
+}
+
+enum ExpenseCategory {
+  PERSONAL
+  OFFICE
+}
+
+enum InventoryType {
+  RESIDENTIAL
+  COMMERCIAL
+}
+
+enum InventorySubType {
+  RENT_RESIDENTIAL
+  RESALE_RESIDENTIAL
+  RENT_COMMERCIAL
+  RESALE_COMMERCIAL
+}
+
+enum BHKType {
+  TWO_BHK
+  TWO_BHK_STUDY
+  THREE_BHK
+  THREE_BHK_STUDY
+  THREE_BHK_SERVANT
+  THREE_BHK_STORE
+  FOUR_BHK
+  FOUR_BHK_STUDY
+  FOUR_BHK_SERVANT
+  FOUR_BHK_STORE
+}
+
+enum FurnishingType {
+  RAW_FLAT
+  SEMI_FURNISHED
+  FULLY_FURNISHED
+}
+
+enum FieldType {
+  TEXT
+  LONG_TEXT
+  NUMBER
+  DECIMAL
+  DROPDOWN
+  MULTI_SELECT
+  DATE
+  DATETIME
+  BOOLEAN
+  PHONE
+  EMAIL
+  URL
+  CURRENCY
+  PERCENTAGE
+  FILE_UPLOAD
+}
+
+enum NotificationType {
+  BIRTHDAY
+  ANNIVERSARY
+  SALE_DONE
+  FOLLOWUP_REMINDER
+  LEAD_ASSIGNED
+  TARGET_ALERT
+  SYSTEM
+}
+
+enum QueryPermissionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ExpenseSubCategory {
+  // Personal
+  FAMILY
+  GROCERY
+  VEGETABLES_FRUITS
+  MAINTENANCE
+  RECHARGE
+  IGL
+  CLOTHS
+  MEDICAL
+  EMI
+  MAID
+  VEHICLE
+  GIFTS
+  TRAVELS
+  INVESTMENT
+  LIC
+  PERSONAL_OTHER
+  // Office
+  SALARY
+  MARKETING
+  INCENTIVE
+  STATIONERY
+  MISCELLANEOUS
+  MOBILE_RECHARGE
+  WIFI_RECHARGE
+  OFFICE_EXPENSE
+  CONVEYANCE
+  ELECTRICITY
+  OFFICE_MAINTENANCE
+  OFFICE_OTHER
+}
+
+// ============================================================
+// COMPANY
+// ============================================================
+
+model Company {
+  id            String   @id @default(cuid())
+  name          String
+  slug          String   @unique
+  logo          String?
+  themeColor    String?  @default("#004aad")
+  phone         String?
+  email         String?
+  address       String?
+  isActive      Boolean  @default(true)
+  settings      Json?
+
+  requireQueryPermission Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  employees        Employee[]
+  leads            Lead[]
+  customers        Customer[]
+  attendance       Attendance[]
+  expenses         Expense[]
+  inventory        Inventory[]
+  projects         Project[]
+  targets          Target[]
+  fieldDefinitions FieldDefinition[]
+  notifications    Notification[]
+  termsConditions  TermsConditions[]
+  whatsappTemplates WhatsappTemplate[]
+  deals            Deal[]
+
+  @@map("companies")
+}
+
+// ============================================================
+// USER
+// ============================================================
+
+model User {
+  id       String  @id @default(cuid())
+  email    String  @unique
+  phone    String? @unique
+  password String
+
+  isActive        Boolean    @default(true)
+  emailVerified   Boolean    @default(false)
+  globalRole      GlobalRole @default(USER)
+
+  lastLoginAt          DateTime?
+  passwordResetToken   String?
+  passwordResetExpires DateTime?
+  refreshTokenHash     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  employee Employee?
+
+  @@map("users")
+}
+
+// ============================================================
+// EMPLOYEE
+// ============================================================
+
+model Employee {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  firstName   String
+  lastName    String?
+  phone       String?
+  avatar      String?
+  designation Designation
+  status      EmployeeStatus @default(ACTIVE)
+  isActive    Boolean        @default(true)
+
+  canViewAllFreshLeads   Boolean @default(false)
+  canEditInventory       Boolean @default(false)
+  canAddExpenses         Boolean @default(false)
+  canManageEmployees     Boolean @default(false)
+  canViewAllAttendance   Boolean @default(false)
+
+  createdDeals  Deal[]
+  assignedDeals Deal[] @relation("DealAssignedTo")
+
+  birthday            DateTime?
+  marriageAnniversary DateTime?
+
+  dailyCallTarget    Int?
+  monthlySalesTarget Decimal? @db.Decimal(15, 4)
+
+  reportingManagerId String?
+  reportingManager   Employee?  @relation("HierarchyTree", fields: [reportingManagerId], references: [id])
+  subordinates       Employee[] @relation("HierarchyTree")
+  subordinateIds     String[]   @default([])
+
+  joinedAt  DateTime?
+  leftAt    DateTime?
+  deletedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  assignedLeads     Lead[]        @relation("LeadAssignee")
+  createdLeads      Lead[]        @relation("LeadCreator")
+  attendance        Attendance[]
+  createdExpenses   Expense[]
+  customers         Customer[]    @relation("CustomerCreatedBy")
+  assignedCustomers Customer[]    @relation("CustomerAssignedTo")
+  targets           Target[]
+  createdQueries    LeadQuery[]
+  notifications     NotificationRecipient[]
+  sentNotifications Notification[]
+  staffLocations    StaffLocation[]
+  whatsappTemplates WhatsappTemplate[]
+
+  queryPermissionRequests  QueryPermissionRequest[] @relation("QueryPermissionRequests")
+  queryPermissionApprovals QueryPermissionRequest[] @relation("QueryPermissionApprovals")
+
+  // NEW — visit/meeting participant relations on LeadQuery
+  visitDoneQueries   LeadQuery[]  @relation("QueryVisitDoneBy")
+  meetingDoneQueries LeadQuery[]  @relation("QueryMeetingDoneBy")
+
+  // NEW — remarks created by this employee
+  createdRemarks QueryRemark[]
+
+  @@unique([userId, companyId])
+  @@index([companyId])
+  @@index([reportingManagerId])
+  @@index([designation])
+  @@index([companyId, isActive])
+  @@map("employees")
+}
+
+// ============================================================
+// LEAD
+// ============================================================
+
+model Lead {
+  id        String  @id @default(cuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  name    String
+  phone   String
+  email   String?
+  phone2  String?
+  address String?
+  source  String?
+  type    LeadType @default(RESIDENTIAL)
+
+  // Denormalized mirror of the latest query's status.
+  // Never set directly by users — always synced from addQuery / updateQuery.
+  status    LeadStatus @default(FRESH)
+  isHot     Boolean    @default(false)
+  isSuspect Boolean    @default(false)
+
+  dealDoneAt DateTime?
+  budgetMin  Decimal?  @db.Decimal(15, 4)
+  budgetMax  Decimal?  @db.Decimal(15, 4)
+  budgetUnit String?
+
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id])
+
+  assignedToId String?
+  assignedTo   Employee? @relation("LeadAssignee", fields: [assignedToId], references: [id])
+  createdById  String
+  createdBy    Employee  @relation("LeadCreator", fields: [createdById], references: [id])
+
+  clientBirthday            DateTime?
+  clientMarriageAnniversary DateTime?
+
+  lastActivityAt      DateTime?
+  assignedAt          DateTime?
+  escalationWarningAt DateTime?
+
+  isActive  Boolean   @default(true)
+  deletedAt DateTime?
+
+  lastWhatsappSentAt DateTime?
+  bulkImportId       String?
+  bulkImport         BulkImport? @relation(fields: [bulkImportId], references: [id])
+
+  queryPermissionRequests QueryPermissionRequest[]
+
+  isFresh   Boolean   @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  queries     LeadQuery[]
+  fieldValues LeadFieldValue[]
+  customer    Customer?
+
+  @@index([companyId])
+  @@index([companyId, status])
+  @@index([companyId, assignedToId])
+  @@index([assignedToId, status])
+  @@index([phone])
+  @@index([companyId, isActive])
+  @@index([lastActivityAt])
+  @@index([assignedAt])
+  @@index([companyId, createdAt])
+  @@index([companyId, isActive, isFresh, assignedToId])
+  @@index([companyId, isActive, isFresh, assignedAt])
+  @@index([companyId, isActive, status, assignedToId])
+  @@index([companyId, isActive, dealDoneAt])  
+  @@map("leads")
+}
+
+// ============================================================
+// LEAD QUERY
+// CHANGED from original:
+//   - `callStatus` renamed to `status`
+//   - @@index([callStatus]) renamed to @@index([status])
+//   - Many new fields added (see comments below)
+//   - New relation: remarks QueryRemark[]
+//   - New relations: visitDoneBy, meetingDoneBy
+// ============================================================
+
+model LeadQuery {
+  id     String @id @default(cuid())
+  leadId String
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  createdById String
+  createdBy   Employee @relation(fields: [createdById], references: [id])
+
+  // RENAMED from callStatus — single unified status for this query
+  status       LeadStatus
+  remark       String?
+  isAutoRemark Boolean    @default(false)
+
+  // Dates
+  followUpDate DateTime?
+  visitDate    DateTime?
+  meetingDate  DateTime?
+  dealDoneDate DateTime?
+  expVisitDate DateTime?   // NEW
+  shiftingDate DateTime?   // NEW — rent leads only
+
+  // NEW — lead interest details at time of this query
+  leadType       LeadType?
+  bhk            String?
+  floor          String?
+  location       String?         // commercial: area/sector
+  purpose        String?         // commercial: "Rental Income" | "Appreciation" | "Self Use"
+  furnishingType FurnishingType?
+  size           Decimal?        @db.Decimal(10, 2)  // sqft — residential only
+
+  deal Deal?
+
+  // Budget (existed before, unchanged)
+  budgetMin  Decimal? @db.Decimal(15, 4)
+  budgetMax  Decimal? @db.Decimal(15, 4)
+  budgetUnit String?
+
+  // Project (existed before, unchanged)
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id])
+
+  // NEW — visit / meeting participants
+  visitDoneById   String?
+  visitDoneBy     Employee? @relation("QueryVisitDoneBy",   fields: [visitDoneById],   references: [id])
+  meetingDoneById String?
+  meetingDoneBy   Employee? @relation("QueryMeetingDoneBy", fields: [meetingDoneById], references: [id])
+
+  // NEW — deal done specifics
+  closingAmount Decimal? @db.Decimal(15, 4)
+  unitNo        String?
+
+  // NEW — not interested / issue reason
+  reason String?
+
+  // NEW — admin-only financial fields
+  leadActualSlab Decimal? @db.Decimal(15, 4)
+  discount       Decimal? @db.Decimal(15, 4)
+  actualRevenue  Decimal? @db.Decimal(15, 4)
+  incentiveSlab  Decimal? @db.Decimal(8, 4)
+  sellRevenue    Decimal? @db.Decimal(15, 4)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // NEW relation
+  remarks QueryRemark[]
+
+  @@index([leadId])
+  @@index([createdById])
+  @@index([status])          // RENAMED from @@index([callStatus])
+  @@index([followUpDate])
+  @@index([createdAt])
+  @@index([leadId, createdById])
+  @@index([leadId, status, createdAt])
+  @@index([createdById, createdAt])                  // activity stats: employee + date range
+  @@index([createdById, status, createdAt]) 
+  @@map("lead_queries")
+}
+
+// ============================================================
+// QUERY REMARK (NEW MODEL)
+// A remark added to an existing query without creating a new query.
+// Queries = call sessions. Remarks = notes on those sessions.
+// ============================================================
+
+model QueryRemark {
+  id      String    @id @default(cuid())
+  queryId String
+  query   LeadQuery @relation(fields: [queryId], references: [id], onDelete: Cascade)
+
+  createdById String
+  createdBy   Employee @relation(fields: [createdById], references: [id])
+
+  text String @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([queryId])
+  @@index([createdById])
+  @@index([createdById, createdAt])  
+  @@map("query_remarks")
+}
+
+
+model Deal {
+  id         String  @id @default(cuid())
+  companyId  String
+  company    Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  queryId    String   @unique
+  query      LeadQuery @relation(fields: [queryId], references: [id])
+
+  leadActualSlab  Decimal? @db.Decimal(15, 4)
+  discount        Decimal? @db.Decimal(15, 4)
+  actualRevenue   Decimal? @db.Decimal(15, 4)
+  incentiveSlab   Decimal? @db.Decimal(8, 4)
+  salesRevenue    Decimal? @db.Decimal(15, 4)
+  incentiveAmount Decimal? @db.Decimal(15, 4)
+  dealValue       Decimal? @db.Decimal(15, 4)
+  incentiveNote   String?
+
+  closingAmount Decimal? @db.Decimal(15, 4)
+  unitNo        String?
+  dealDoneDate  DateTime?
+
+  createdById  String
+  createdBy    Employee @relation(fields: [createdById], references: [id])
+  assignedToId String?
+  assignedTo   Employee? @relation("DealAssignedTo", fields: [assignedToId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId])
+  @@index([customerId])
+  @@map("deals")
+}
+
+// ============================================================
+// BULK IMPORT
+// ============================================================
+
+model BulkImport {
+  id           String   @id @default(cuid())
+  companyId    String
+  uploadedById String
+  fileName     String
+  totalRows    Int
+  successRows  Int      @default(0)
+  failedRows   Int      @default(0)
+  errors       Json?
+  fileUrl      String?
+  createdAt    DateTime @default(now())
+
+  leads Lead[]
+
+  @@index([companyId])
+  @@map("bulk_imports")
+}
+
+// ============================================================
+// QUERY PERMISSION REQUEST
+// ============================================================
+
+model QueryPermissionRequest {
+  id            String                @id @default(cuid())
+  companyId     String
+  leadId        String
+  lead          Lead                  @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  requestedById String
+  requestedBy   Employee              @relation("QueryPermissionRequests", fields: [requestedById], references: [id])
+  status        QueryPermissionStatus @default(PENDING)
+  approvedById  String?
+  approvedBy    Employee?             @relation("QueryPermissionApprovals", fields: [approvedById], references: [id])
+  approvedAt    DateTime?
+  expiresAt     DateTime?
+  rejectionNote String?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  @@index([companyId, status])
+  @@index([leadId])
+  @@index([requestedById])
+  @@map("query_permission_requests")
+}
+
+// ============================================================
+// CUSTOMER
+// ============================================================
+
+model Customer {
+  id        String  @id @default(cuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  leadId String @unique
+  lead   Lead   @relation(fields: [leadId], references: [id])
+
+  name    String
+  phone   String
+  email   String?
+  source  String?  
+
+  leadActualSlab Decimal? @db.Decimal(15, 4)
+  discount       Decimal? @db.Decimal(15, 4)
+  actualRevenue  Decimal? @db.Decimal(15, 4)
+  incentiveSlab  Decimal? @db.Decimal(8, 4)
+  salesRevenue   Decimal? @db.Decimal(15, 4)
+
+  createdById  String
+  createdBy    Employee  @relation("CustomerCreatedBy",  fields: [createdById],  references: [id])
+  assignedToId String?
+  assignedTo   Employee? @relation("CustomerAssignedTo", fields: [assignedToId], references: [id])
+
+  incentiveAmount Decimal? @db.Decimal(15, 4)
+  dealValue       Decimal? @db.Decimal(15, 4)
+  incentiveNote   String?
+
+  deals Deal[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId])
+  @@index([assignedToId])
+  @@map("customers")
+}
+
+// ============================================================
+// ATTENDANCE
+// ============================================================
+
+model Attendance {
+  id         String   @id @default(cuid())
+  companyId  String
+  company    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  date DateTime @db.Date
+
+  checkInAt       DateTime?
+  checkInLat      Float?
+  checkInLng      Float?
+  checkInLocation String?
+
+  checkOutAt       DateTime?
+  checkOutLat      Float?
+  checkOutLng      Float?
+  checkOutLocation String?
+
+  hoursWorked Decimal?          @db.Decimal(5, 2)
+  status      AttendanceStatus?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([employeeId, date])
+  @@index([companyId, date])
+  @@index([employeeId, date])
+  @@map("attendance")
+}
+
+// ============================================================
+// EXPENSE
+// ============================================================
+
+model Expense {
+  id        String  @id @default(cuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  createdById String
+  createdBy   Employee @relation(fields: [createdById], references: [id])
+
+  category    ExpenseCategory
+  title       String
+  amount      Decimal         @db.Decimal(15, 4)
+  description String?
+  receiptUrl  String?
+  expenseDate DateTime
+
+  subCategory  ExpenseSubCategory? 
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId, expenseDate(sort: Desc)])
+  @@index([companyId, createdById])
+  @@index([companyId, category])
+  @@index([companyId, subCategory])
+  // Composite for the most common query (filtered list)
+  @@index([companyId, createdById, expenseDate(sort: Desc)])
+  @@index([companyId, category, subCategory, expenseDate(sort: Desc)])
+  @@map("expenses")
+}
+
+// ============================================================
+// INVENTORY
+// ============================================================
+
+model Inventory {
+  id        String  @id @default(cuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  ownerName  String
+  ownerPhone String
+  ownerEmail String?
+
+  inventoryType    InventoryType
+  inventorySubType InventorySubType
+
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id])
+
+  unitNo   String?
+  towerNo  String?
+  bhk      BHKType?
+  size     Decimal? @db.Decimal(10, 2)
+  facing   String?
+  floor    String?
+  demand   Decimal? @db.Decimal(15, 4)
+  hasTenant  Boolean @default(false)
+  hasParking Boolean @default(false)
+
+  expectedVisitTime String?
+  availableDate     DateTime?
+  furnishingType    FurnishingType?
+  inventoryStatus   String?
+
+  isActive  Boolean   @default(true)
+  deletedAt DateTime?
+
+  lastEditedById String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([companyId])
+  @@index([companyId, inventoryType])
+  @@index([companyId, isActive])
+  @@map("inventory")
+}
+
+// ============================================================
+// PROJECT
+// ============================================================
+
+model Project {
+  id        String  @id @default(cuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  name       String
+  clientName String?
+  product    String?
+
+  sizeInSqft             Decimal? @db.Decimal(10, 2)
+  floors                 Int?
+  paymentPlan            String?
+  basicSellPrice         Decimal? @db.Decimal(15, 4)
+  discount               Decimal? @db.Decimal(5, 2)
+  viewPlc                Decimal? @db.Decimal(15, 4)
+  cornerPlc              Decimal? @db.Decimal(15, 4)
+  floorPlc               Decimal? @db.Decimal(15, 4)
+  edc                    Decimal? @db.Decimal(15, 4)
+  idc                    Decimal? @db.Decimal(15, 4)
+  ffc                    Decimal? @db.Decimal(15, 4)
+  otherAdditionalCharges Decimal? @db.Decimal(15, 4)
+  leastRent              Decimal? @db.Decimal(15, 4)
+  otherPossessionCharges Decimal? @db.Decimal(15, 4)
+  gstPercent             Decimal? @db.Decimal(5, 2)
+
+  note1 String?
+  note2 String?
+  note3 String?
+  note4 String?
+
+  powerBackupKva   Decimal? @db.Decimal(8, 2)
+  powerBackupPrice Decimal? @db.Decimal(15, 4)
+
+  onBookingPercent    Decimal? @db.Decimal(5, 2)
+  within30DaysPercent Decimal? @db.Decimal(5, 2)
+  onPossessionPercent Decimal? @db.Decimal(5, 2)
+
+  isActive  Boolean   @default(true)
+  deletedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  leads     Lead[]
+  inventory Inventory[]
+  queries   LeadQuery[]
+
+  @@index([companyId])
+  @@map("projects")
+}
+
+// ============================================================
+// TARGET
+// ============================================================
+
+model Target {
+  id         String   @id @default(cuid())
+  companyId  String
+  company    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  month       Int
+  year        Int
+  callTarget  Int     @default(0)
+  salesTarget Decimal @default(0) @db.Decimal(15, 4)
+
+  callsAchieved    Int     @default(0)
+  salesAchieved    Decimal @default(0) @db.Decimal(15, 4)
+  visitsAchieved   Int     @default(0)
+  meetingsAchieved Int     @default(0)
+  dealsAchieved    Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([employeeId, month, year])
+  @@index([companyId, month, year])
+  @@map("targets")
+}
+
+// ============================================================
+// WHATSAPP TEMPLATE
+// ============================================================
+
+model WhatsappTemplate {
+  id         String   @id @default(cuid())
+  companyId  String
+  company    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  templateText String @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([employeeId])
+  @@map("whatsapp_templates")
+}
+
+// ============================================================
+// FIELD DEFINITION
+// ============================================================
+
+model FieldDefinition {
+  id        String  @id @default(cuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  entityType   String
+  fieldKey     String
+  displayName  String
+  fieldType    FieldType
+  placeholder  String?
+  helpText     String?
+  options      Json?
+  defaultValue Json?
+
+  isRequired   Boolean @default(false)
+  isVisible    Boolean @default(true)
+  isSearchable Boolean @default(true)
+  isFilterable Boolean @default(true)
+  displayOrder Int     @default(0)
+  isCoreField  Boolean @default(false)
+  applicableLeadTypes Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  leadFieldValues LeadFieldValue[]
+
+  @@unique([companyId, entityType, fieldKey])
+  @@index([companyId, entityType])
+  @@map("field_definitions")
+}
+
+// ============================================================
+// LEAD FIELD VALUE
+// ============================================================
+
+model LeadFieldValue {
+  id                String          @id @default(cuid())
+  leadId            String
+  lead              Lead            @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  fieldDefinitionId String
+  fieldDefinition   FieldDefinition @relation(fields: [fieldDefinitionId], references: [id], onDelete: Cascade)
+
+  textValue    String?
+  numberValue  Decimal?  @db.Decimal(15, 4)
+  dateValue    DateTime?
+  booleanValue Boolean?
+  jsonValue    Json?
+
+  searchableValue String?
+  sortableValue   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([leadId, fieldDefinitionId])
+  @@index([searchableValue])
+  @@index([sortableValue])
+  @@map("lead_field_values")
+}
+
+// ============================================================
+// NOTIFICATION
+// ============================================================
+
+model Notification {
+  id        String  @id @default(cuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  createdById String?
+  createdBy   Employee? @relation(fields: [createdById], references: [id])
+
+  type      NotificationType
+  title     String
+  message   String
+  metadata  Json?
+  expiresAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  recipients NotificationRecipient[]
+
+  @@index([companyId])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+model NotificationRecipient {
+  id             String       @id @default(cuid())
+  notificationId String
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  employeeId     String
+  employee       Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  readAt         DateTime?
+
+  @@unique([notificationId, employeeId])
+  @@index([employeeId])
+  @@map("notification_recipients")
+}
+
+// ============================================================
+// STAFF LOCATION
+// ============================================================
+
+model StaffLocation {
+  id         String   @id @default(cuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  latitude  Float
+  longitude Float
+  address   String?
+  accuracy  Float?
+
+  requestedById String?
+  capturedAt    DateTime @default(now())
+
+  @@index([employeeId])
+  @@map("staff_locations")
+}
+
+// ============================================================
+// TERMS & CONDITIONS
+// ============================================================
+
+model TermsConditions {
+  id        String  @id @default(cuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  content   String  @db.Text
+  version   Int     @default(1)
+  isActive  Boolean @default(true)
+
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  acceptances TermsAcceptance[]
+
+  @@index([companyId])
+  @@map("terms_conditions")
+}
+
+model TermsAcceptance {
+  id        String          @id @default(cuid())
+  termsId   String
+  terms     TermsConditions @relation(fields: [termsId], references: [id], onDelete: Cascade)
+  userId    String
+  acceptedAt DateTime @default(now())
+  ipAddress  String?
+  userAgent  String?
+
+  @@unique([termsId, userId])
+  @@map("terms_acceptances")
+}
