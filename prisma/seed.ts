@@ -2,10 +2,16 @@
 // Run: npx ts-node prisma/seed.ts
 // OR: npx prisma db seed (configure in package.json)
 
-import 'dotenv/config';
 import { PrismaClient, Designation, FieldType } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import * as bcrypt from 'bcrypt';
+
+// Optional: Load .env file for local development
+try {
+  require('dotenv').config();
+} catch (e) {
+  // Ignore if dotenv is not found or already loaded
+}
 
 // ── Prisma 7 requires the adapter even in scripts ──
 const adapter = new PrismaPg({
