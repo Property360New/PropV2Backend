@@ -46,7 +46,7 @@ async function bootstrap() {
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     });
   } else {
-    const defaultAllow = ['https://property360.com', ...allowList];
+    const defaultAllow = ['https://prop-v2-frontend.vercel.app/', ...allowList];
     app.enableCors({
       origin: (origin, callback) => {
         if (!origin) return callback(null, true);
