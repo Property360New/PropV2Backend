@@ -62,7 +62,7 @@ export class BulkImportController {
   )
   async importLeads(
     @CurrentUser() user: any,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile() file: any,
     @Body('assignedToId') assignedToId?: string,
   ) {
     if (!file) throw new BadRequestException('No file uploaded');
