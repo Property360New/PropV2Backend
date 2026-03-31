@@ -65,6 +65,10 @@ export class HierarchyService {
               lastName: employeeData.lastName,
               phone: employeeData.phone,
               designation: employeeData.designation as Designation,
+              aadhaarNumber: employeeData.aadhaarNumber ?? null,
+panNumber: employeeData.panNumber ?? null,
+emergencyContact: employeeData.emergencyContact ?? null,
+employeeType: employeeData.employeeType ?? 'EMPLOYEE',
               reportingManagerId,
               birthday: employeeData.birthday ? new Date(employeeData.birthday) : null,
               marriageAnniversary: employeeData.marriageAnniversary
@@ -209,6 +213,10 @@ export class HierarchyService {
         ...(dto.monthlySalesTarget  !== undefined && {
           monthlySalesTarget: dto.monthlySalesTarget,
         }),
+        ...(dto.aadhaarNumber  !== undefined && { aadhaarNumber: dto.aadhaarNumber }),
+...(dto.panNumber      !== undefined && { panNumber: dto.panNumber }),
+...(dto.emergencyContact !== undefined && { emergencyContact: dto.emergencyContact }),
+...(dto.employeeType   !== undefined && { employeeType: dto.employeeType }),
       },
     });
 

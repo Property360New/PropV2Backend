@@ -1,4 +1,5 @@
 // prisma.config.ts (in project root, next to package.json)
+import "dotenv/config";
 import { defineConfig } from "prisma/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 

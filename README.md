@@ -66,3 +66,5 @@ CREATE INDEX IF NOT EXISTS idx_leadquery_status_createdat
 
 Birthday notification
   Post {{baseUrl}}/leads/trigger-special-notifications# PropV2Backend
+
+  Also run the seed file to create the initial company(prisma/seed.ts)

@@ -180,6 +180,12 @@ enum ExpenseSubCategory {
   OFFICE_OTHER
 }
 
+enum EmployeeType {
+  EMPLOYEE
+  PNL
+  CHANNEL_PARTNER
+}
+
 // ============================================================
 // COMPANY
 // ============================================================
@@ -263,6 +269,10 @@ model Employee {
   designation Designation
   status      EmployeeStatus @default(ACTIVE)
   isActive    Boolean        @default(true)
+  aadhaarNumber    String?
+  panNumber        String?
+  emergencyContact String?
+  employeeType     EmployeeType  @default(EMPLOYEE)
 
   canViewAllFreshLeads   Boolean @default(false)
   canEditInventory       Boolean @default(false)
